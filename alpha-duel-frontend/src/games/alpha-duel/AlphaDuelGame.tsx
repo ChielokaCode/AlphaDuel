@@ -7,8 +7,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { getFundedSimulationSourceAddress } from '@/utils/simulationUtils';
 import { devWalletService, DevWalletService } from '@/services/devWalletService';
 import type { Game } from './bindings';
-import fs from 'fs'
-import { readFileSync } from 'fs';
+import { Clipboard } from "lucide-react"; 
 
 
 // Word pool with 50+ words, all > 3 letters
@@ -116,6 +115,9 @@ export function AlphaDuelGame({
   const [player2Guess, setPlayer2Guess] = useState<string[]>([]);
   const [player1GuessNumbers, setPlayer1GuessNumbers] = useState<number[]>([]);
   const [player2GuessNumbers, setPlayer2GuessNumbers] = useState<number[]>([]);
+  const [proofHex, setProofHex] = useState("");
+  const [publicInputsHex, setPublicInputsHex] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     setPlayer1Address(userAddress);
@@ -148,13 +150,11 @@ export function AlphaDuelGame({
     }
   };
 
-  // const handleLetterClick = (letter: string) => {
-  //   if (guess.includes(letter)) {
-  //     setGuess(guess.filter(l => l !== letter));
-  //   } else if (guess.length < 3) {
-  //     setGuess([...guess, letter]);
-  //   }
-  // };
+  const handleCopy = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 1500); // show temporary feedback
+  };
 
   const handleLetterClick = (player: number, letter: string) => {
     if (actionLock.current) return;
@@ -930,7 +930,7 @@ const handleRevealWinner = async () => {
         setSuccess(
           winner === userAddress
             ? `🎉 You won! ${winner.slice(0, 8)}...${winner.slice(-4)}`
-            : `Game complete! Winner revealed: ${winner.slice(0, 8)}...${winner.slice(-4)}`
+            : `Game complete!}`
         );
       }
 
@@ -978,7 +978,7 @@ const handleRevealWinnerWithProof = async () => {
     const hiddenNumbers = encodeHiddenWord(getHiddenWord(gameState?.hidden_word_id || 0));
 
     // 5️⃣ Call the contract
-    await alphaDuelService.revealWinnerWithProof(
+    const result = await alphaDuelService.revealWinnerWithProof(
       sessionId,
       userAddress,
       hiddenNumbers,
@@ -1011,6 +1011,10 @@ const handleRevealWinnerWithProof = async () => {
             : `Game complete! Winner revealed: ${winner.slice(0, 8)}...${winner.slice(-4)}`
         );
       }
+
+      // ✅ Store proof + public inputs for Complete Phase display
+      setProofHex(result.proof);
+      setPublicInputsHex(result.publicInputs);
 
       // 8️⃣ Refresh standings
       onStandingsRefresh();
@@ -1143,12 +1147,12 @@ const handleCommitGuess = async () => {
       <div className="flex items-center mb-6">
         <div>
           <h2 className="text-3xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent">
-            Alpha Duel Game 🎲
+            Alpha Duel Game
           </h2>
           <p className="text-sm text-gray-700 font-semibold mt-1">
             Each player picks 3 letters. Closest guesses to the hidden word win!
           </p>
-          <p className="text-xs text-gray-500 font-mono mt-1">
+          <p className="text-lg text-gray-500 font-mono mt-1">
             Session ID: {sessionId}
           </p>
         </div>
@@ -1493,7 +1497,7 @@ const handleCommitGuess = async () => {
         </div>
       )}
 
-      {/* GUESS PHASE */}
+      
       {/* GUESS PHASE */}
 {gamePhase === 'guess' && gameState && (
   <div className="space-y-6">
@@ -1675,57 +1679,166 @@ const handleCommitGuess = async () => {
                 Points: {(Number(playerPoints) / 10000000).toFixed(2)}
               </p>
               <p className="text-sm font-semibold text-gray-800 mt-2">
-              Guessed: { isPlayer1 ? player1Guess : player2Guess}
-</p>
+              {playerNum === 1 && "Player1 Guess: " + player1GuessNumbers.map(n => numberToLetter(n)).join('')}
+              {playerNum === 2 && " Player2 Guess: " + player2GuessNumbers.map(n => numberToLetter(n)).join('')}
+ </p>
 
-{/* Correct Count */}
-         <p className="mt-3 text-sm font-semibold text-gray-700">
+   {/* Correct Count */}
+       <p className="mt-3 text-sm font-semibold text-gray-700">
   Correct Letters:{" "}
   <span className="font-black text-green-700">
-    {countCorrectLetters(
-      (playerGuess ?? []).map(letterToNumber),
-      getHiddenWord(gameState.hidden_word_id)
-    )}
+    {playerNum === 1 &&
+      countCorrectLetters(
+        player1GuessNumbers,
+        getHiddenWord(gameState.hidden_word_id)
+      )}
+
+    {playerNum === 2 &&
+      countCorrectLetters(
+        player2GuessNumbers,
+        getHiddenWord(gameState.hidden_word_id)
+      )}
   </span>
-</p>
+ </p>
 
           {/* Winner Badge */}
           {gameState.winner === playerName && (
   <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
     {playerName === userAddress ? "🎉 You Won!" : "🏆 Winner"}
   </div>
-)}
+ )}
             </div>
           );
         })}
       </div>
 
+      {/* ---------------------- */}
+ {/* 🧾 Hex Output Section */}
+ {/* ---------------------- */}
+ <div className="mt-16 p-4 bg-white/70 border border-green-200 rounded-xl shadow-inner hover:shadow-lg transition-shadow">
+      <h3 className="text-lg font-bold text-gray-800 mb-3">Hex Output</h3>
 
-      {/* Winner Card */}
-      {/* {gameState.winner && (
-        <div className="mt-4 p-5 bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-green-200 rounded-xl shadow-lg animate-pulse">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-600 mb-2">Winner</p>
-          <p className="font-mono text-sm font-bold text-gray-800 mb-2">
-            {gameState.winner.slice(0, 8)}...{gameState.winner.slice(-4)}
-          </p>
-          {gameState.winner === userAddress && (
-            <p className="mt-2 text-green-700 font-black text-lg animate-bounce">
-              🎉 You won!
-            </p>
-          )}
-        </div>
-      )} */}
+      {/* Proof */}
+      <div className="relative">
+        <label className="block text-sm font-semibold text-black mb-1">
+          Proof (hex)
+        </label>
+        <textarea
+          value={proofHex}
+          readOnly
+          className="
+            w-full
+            h-26
+            px-2
+            text-black
+            text-xs
+            bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50
+            border
+            border-green-200
+            rounded-md
+            selection:bg-yellow-200
+            selection:text-black
+          "
+        />
+        <button
+          onClick={() => handleCopy(proofHex, "proof")}
+          className="absolute -top-2 right-2 p-1 rounded-md bg-green-200 text-black hover:bg-green-300"
+        >
+          <Clipboard className="w-4 h-4" />
+        </button>
+        {copied === "proof" && (
+          <span className="absolute -top-2 right-10 text-sm text-green-700 font-semibold">
+            Copied!
+          </span>
+        )}
+      </div>
+
+      {/* Public Inputs */}
+      <div className="relative mt-4">
+        <label className="block text-sm font-semibold text-black mb-1">
+          Public_Inputs (hex)
+        </label>
+        <textarea
+          value={publicInputsHex}
+          readOnly
+          className="
+            w-full
+            h-10
+            p-2
+            font-bold
+            text-black
+            text-lg
+            bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50
+            border
+            border-green-200
+            rounded-md
+            selection:bg-yellow-200
+            selection:text-black
+          "
+        />
+        <button
+          onClick={() => handleCopy(publicInputsHex, "public")}
+          className="absolute -top-2 right-2 p-1 rounded-md bg-green-200 text-black hover:bg-green-300"
+        >
+          <Clipboard className="w-4 h-4" />
+        </button>
+        {copied === "public" && (
+          <span className="absolute -top-2 right-10 text-sm text-green-700 font-semibold">
+            Copied!
+          </span>
+        )}
+        
+      </div>
+
+      <div className="relative mt-4">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Deployed Game Contract
+        </label>
+        <textarea
+          value="CAQZEXWXTC2KSIMOVZUTMSL5O3ULKDSLLF2LRWIB7GYHJWVZINVGSAC3"
+          readOnly
+          className="
+            w-full
+            h-10
+            p-2
+            font-bold
+            text-black
+            text-lg
+            bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50
+            border
+            border-green-200
+            rounded-md
+            selection:bg-yellow-200
+            selection:text-black
+          "
+        />
+        <button
+          onClick={() => handleCopy("CAQZEXWXTC2KSIMOVZUTMSL5O3ULKDSLLF2LRWIB7GYHJWVZINVGSAC3", "gameContract")}
+          className="absolute -top-2 right-2 p-1 rounded-md bg-green-200 text-black hover:bg-green-300"
+        >
+          <Clipboard className="w-4 h-4" />
+        </button>
+        {copied === "gameContract" && (
+          <span className="absolute -top-2 right-10 text-sm text-green-700 font-semibold">
+            Copied!
+          </span>
+        )}
+        <a href="https://stellar.expert/explorer/testnet/contract/CAQZEXWXTC2KSIMOVZUTMSL5O3ULKDSLLF2LRWIB7GYHJWVZINVGSAC3?filter=history" target="_blank" rel="noopener noreferrer" className="absolute -top-2 right-16 text-sm text-blue-600 hover:text-blue-800">
+          View on Explorer
+        </a>
+      </div>
+    </div>
     </div>
 
     {/* Start New Game Button */}
     <button
       onClick={handleStartNewGame}
-      className="w-full py-4 rounded-xl font-bold text-gray-700 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+      className="mt-2 w-full py-4 rounded-xl bg-green-600 text-white font-bold text-gray-700 hover:from-green-500 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
     >
       Start New Game
     </button>
   </div>
-)}
+ )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ import initACVM from '@noir-lang/acvm_js';
 import acvm from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
 import noirc from '@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm?url';
 import circuit from '../../../alphaduel_winner_proof/target/alphaduel_winner_proof.json';
-// import type { CompiledCircuit } from '@noir-lang/noir_js';
+import type { CompiledCircuit } from "@noir-lang/types";
 
 // Initialize WASM modules
 await Promise.all([initACVM(fetch(acvm)), initNoirC(fetch(noirc))]);
@@ -721,118 +721,6 @@ export class AlphaDuelService {
     }
   }
 
-//   async revealWinnerWithProof(
-//   sessionId: number,
-//   player: string,
-//   hidden: number[],
-//   hidden_len: number,
-//   p1_guess: number[],
-//   p2_guess: number[],
-//   signer: Pick<contract.ClientOptions, 'signTransaction' | 'signAuthEntry'>,
-//   authTtlMinutes?: number
-// ) {
-//   const client = this.createSigningClient(player, signer);
-//   // const circuitProof = circuit as unknown as CompiledCircuit;
-
-//   try {
-//   const noir = new Noir(circuit);
-//   const backend = new UltraHonkBackend(circuit.bytecode);
-
-//   console.log(
-//     "hidden_word: ", hidden, "hidden_len: ", hidden_len, "p1_guess: ", p1_guess, "p2_guess: ", p2_guess);
-
-//   const { witness, returnValue } = await noir.execute({ hidden, hidden_len, p1_guess, p2_guess });
-
-//    const proof = await backend.generateProof(witness);
-//    const publicOutputs = returnValue.toString();
-//    console.log("Generated proof with length:", proof.proof);
-//    console.log("Public outputs:", publicOutputs);
-//    console.log("Public inputs:", proof.publicInputs);
-
-  
-//    const isValid = await backend.verifyProof(proof);
-//    console.log("Proof verification result:", isValid);
-//   // ----------------------
-//   // 1️⃣ Fetch proof from public folder
-//   // ----------------------
-//   // const proofResponse = await fetch("/proof");
-//   // console.log("Fetched proof response with status:", proofResponse.status);
-
-//   // if (!proofResponse.ok) {
-//   //   throw new Error(`Failed to fetch proof: ${proofResponse.status} ${proofResponse.statusText}`);
-//   // }
-//   // const proofBytes = new Uint8Array(await proofResponse.arrayBuffer());
-//   // console.log("Proof bytes length:", proofBytes.length);
-//   // const proofBuffer = Buffer.from(proofBytes); // SDK expects Buffer
-//   // console.log("Proof buffer created with length:", proofBuffer.length);
-
-//   // // ----------------------
-//   // // 2️⃣ Fetch public_inputs from public folder
-//   // // ----------------------
-//   // const publicResponse = await fetch("/public_inputs");
-//   // console.log("Fetched public inputs response with status:", publicResponse.status);
-
-//   // if (!publicResponse.ok) {
-//   //   throw new Error(`Failed to fetch public inputs: ${publicResponse.status} ${publicResponse.statusText}`);
-//   // }
-//   // const publicInputsBytes = new Uint8Array(await publicResponse.arrayBuffer());
-//   // console.log("Public inputs bytes length:", publicInputsBytes.length);
-
-//   // // Only take first byte for winner_flag
-//   const winnerFlag = proof.publicInputs[0];
-//   console.log("Extracted winner flag from public inputs:", winnerFlag);
-
-//   const winnerFlagNum: number =
-//     typeof winnerFlag === 'string' ? parseInt(winnerFlag, 10) : winnerFlag;
-//   const publicInputs: number[] = [winnerFlagNum]; // Vec<u32> for contract
-//   console.log("Public inputs array length:", publicInputs.length);
-
-
-//   console.log("📦 Proof and public inputs ready, submitting to contract...");
-
-//   // ----------------------
-//   // 3️⃣ Call contract
-//   // ----------------------
-//   const tx = await client.reveal_winner_with_proof({
-//     session_id: sessionId,
-//     proof: Buffer.from(proof.proof),
-//     public_inputs: [winnerFlagNum],
-//   }, DEFAULT_METHOD_OPTIONS);
-//   console.log("Transaction built for reveal_winner_with_proof");
-
-//   // ----------------------
-//   // 4️⃣ Calculate valid ledger seq
-//   // ----------------------
-//   const validUntilLedgerSeq = authTtlMinutes
-//     ? await calculateValidUntilLedger(RPC_URL, authTtlMinutes)
-//     : await calculateValidUntilLedger(RPC_URL, DEFAULT_AUTH_TTL_MINUTES);
-
-//   // ----------------------
-//   // 5️⃣ Sign and send transaction
-//   // ----------------------
-//   try {
-//     const sentTx = await signAndSendViaLaunchtube(
-//       tx,
-//       DEFAULT_METHOD_OPTIONS.timeoutInSeconds,
-//       validUntilLedgerSeq
-//     );
-
-//     if (sentTx.getTransactionResponse?.status === 'FAILED') {
-//       const errorMessage = this.extractErrorFromDiagnostics(sentTx.getTransactionResponse);
-//       throw new Error(`Transaction failed: ${errorMessage}`);
-//     }
-
-//     return sentTx.result; // Returns winner address string
-//   } catch (err) {
-//     if (err instanceof Error && err.message.includes('Transaction failed!')) {
-//       throw new Error('Transaction failed - check if both players have guessed and the game is still active');
-//     }
-//     throw err;
-//   }
-// } catch (err) {  console.error('Error in revealWinnerWithProof:', err);
-//   throw new Error(`Failed to reveal winner with proof: ${err instanceof Error ? err.message : String(err)}`);
-// }
-// }
 
 async revealWinnerWithProof(
   sessionId: number,
@@ -854,7 +742,9 @@ async revealWinnerWithProof(
     // 🟢 Noir execution and proof generation
     // ----------------------
     try {
-      const noir = new Noir(circuit);
+      const circuitTyped = circuit as unknown as CompiledCircuit;
+
+      const noir = new Noir(circuitTyped);
       const backend = new UltraHonkBackend(circuit.bytecode);
 
       console.log(
@@ -920,7 +810,12 @@ async revealWinnerWithProof(
       throw new Error(`Transaction failed: ${errorMessage}`);
     }
 
-    return sentTx.result; // Returns winner address string
+
+    return {
+      winner: sentTx.result,
+      proof: Buffer.from(proof.proof).toString("hex"),
+      publicInputs: proof.publicInputs,
+    };
 
   } catch (err) {
     console.error('Error in revealWinnerWithProof:', err);
