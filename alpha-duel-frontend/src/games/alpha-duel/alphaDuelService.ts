@@ -12,7 +12,7 @@ import initNoirC from '@noir-lang/noirc_abi';
 import initACVM from '@noir-lang/acvm_js';
 import acvm from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
 import noirc from '@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm?url';
-import circuit from '../../../alphaduel_winner_proof/target/alphaduel_winner_proof.json';
+import circuit from './alphaduel_winner_proof.json';
 import type { CompiledCircuit } from "@noir-lang/types";
 
 // Initialize WASM modules
