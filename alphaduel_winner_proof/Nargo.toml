@@ -1,0 +1,6 @@
+[package]
+name = "alphaduel_winner_proof"
+type = "bin"
+authors = [""]
+
+[dependencies]
