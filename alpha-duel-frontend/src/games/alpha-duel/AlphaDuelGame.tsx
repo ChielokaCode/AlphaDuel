@@ -1918,7 +1918,7 @@ useEffect(() => {
           "
         />
         <button
-          onClick={() => handleCopy("CAQZEXWXTC2KSIMOVZUTMSL5O3ULKDSLLF2LRWIB7GYHJWVZINVGSAC3", "gameContract")}
+          onClick={() => handleCopy("CAPFXZGLINDRLETIES2G7STFJJ4OJYHX66ES4FHUQFVCTRTJNZVKIZWY", "gameContract")}
           className="absolute -top-2 right-2 p-1 rounded-md bg-green-200 text-black hover:bg-green-300"
         >
           <Clipboard className="w-4 h-4" />
@@ -1928,7 +1928,7 @@ useEffect(() => {
             Copied!
           </span>
         )}
-        <a href="https://stellar.expert/explorer/testnet/contract/CAQZEXWXTC2KSIMOVZUTMSL5O3ULKDSLLF2LRWIB7GYHJWVZINVGSAC3?filter=history" target="_blank" rel="noopener noreferrer" className="absolute -top-2 right-16 text-sm text-blue-600 hover:text-blue-800">
+        <a href="https://stellar.expert/explorer/testnet/contract/CAPFXZGLINDRLETIES2G7STFJJ4OJYHX66ES4FHUQFVCTRTJNZVKIZWY?filter=history" target="_blank" rel="noopener noreferrer" className="absolute -top-2 right-16 text-sm text-blue-600 hover:text-blue-800">
           View on Explorer
         </a>
       </div>
@@ -1973,7 +1973,6 @@ useEffect(() => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {[1, 2].map((playerNum) => {
           const playerName = playerNum === 1 ? gameState.player1 : gameState.player2;
-          // const playerGuess = playerNum === 1 ? gameState.player1_guess : gameState.player2_guess;
           const playerGuess = playerNum === 1 ? player1Guess : player2Guess;
           const playerPoints = playerNum === 1 ? gameState.player1_points : gameState.player2_points;
           
@@ -2015,14 +2014,6 @@ useEffect(() => {
  </p>
 
  
-
-          {/* Winner Badge */}
-          {/* {gameState.winner === playerName && (
-  <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
-    {playerName === userAddress ? "🎉 You Won!" : "🏆 Winner"}
-  </div>
- )} */}
- {/* Winner Badge */}
 {/* Winner Badge */}
 {(() => {
   const hidden = getHiddenWord(gameState.hidden_word_id);
