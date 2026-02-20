@@ -118,6 +118,11 @@ export function AlphaDuelGame({
   const [proofHex, setProofHex] = useState("");
   const [publicInputsHex, setPublicInputsHex] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [showHexOutput, setShowHexOutput] = useState(false);
+  const [proofLoading, setProofLoading] = useState(false);
+
+
+  
 
   useEffect(() => {
     setPlayer1Address(userAddress);
@@ -156,37 +161,109 @@ export function AlphaDuelGame({
     setTimeout(() => setCopied(null), 1500); // show temporary feedback
   };
 
-  const handleLetterClick = (player: number, letter: string) => {
-    if (actionLock.current) return;
-    if (player === 1) {
-      if (!player1Guess.includes(letter) && player1Guess.length < 3) {
-        setPlayer1Guess([...player1Guess, letter]);
-        setPlayer1GuessNumbers([...player1Guess.map(letterToNumber), letterToNumber(letter)]);
-      }
-    } else {
-      if (!player2Guess.includes(letter) && player2Guess.length < 3) {
-        setPlayer2Guess([...player2Guess, letter]);
-        setPlayer2GuessNumbers([...player2Guess.map(letterToNumber), letterToNumber(letter)]);
-      }
-    }
-  };
+  // const handleLetterClick = (player: number, letter: string) => {
+  //   if (actionLock.current) return;
+  //   if (player === 1) {
+  //     if (!player1Guess.includes(letter) && player1Guess.length < 3) {
+  //       setPlayer1Guess([...player1Guess, letter]);
+  //       setPlayer1GuessNumbers([...player1Guess.map(letterToNumber), letterToNumber(letter)]);
+  //     }
+  //   } else {
+  //     if (!player2Guess.includes(letter) && player2Guess.length < 3) {
+  //       setPlayer2Guess([...player2Guess, letter]);
+  //       setPlayer2GuessNumbers([...player2Guess.map(letterToNumber), letterToNumber(letter)]);
+  //     }
+  //   }
+  // };
 
-  const handleStartNewGame = () => {
+  const handleLetterClick = async (player: number, letter: string) => {
+  if (actionLock.current) return;
+
+  if (player === 1) {
+    if (!player1Guess.includes(letter) && player1Guess.length < 3) {
+      const updated = [...player1Guess, letter];
+      setPlayer1Guess(updated);
+      const updatedNumbers = updated.map(letterToNumber);
+      setPlayer1GuessNumbers(updatedNumbers);
+
+      // send to backend for sync
+      await alphaDuelService.commitGuessToBackend(sessionId, 1, updatedNumbers);
+    }
+  } else {
+    if (!player2Guess.includes(letter) && player2Guess.length < 3) {
+      const updated = [...player2Guess, letter];
+      setPlayer2Guess(updated);
+      const updatedNumbers = updated.map(letterToNumber);
+      setPlayer2GuessNumbers(updatedNumbers);
+
+      // send to backend for sync
+      await alphaDuelService.commitGuessToBackend(sessionId, 2, updatedNumbers);
+    }
+  }
+};
+
+
+  // const handleStartNewGame = () => {
+  //   if (gameState?.winner) {
+  //     onGameComplete();
+  //   }
+
+  //   actionLock.current = false;
+  //   setGamePhase('create');
+  //   setSessionId(createRandomSessionId());
+  //   setGameState(null);
+  //   setGuess([]);
+  //   setNumericGuess(null);
+  //   setLoading(false);
+  //   setQuickstartLoading(false);
+  //   setError(null);
+  //   setSuccess(null);
+  //   setStatus(null);
+  //   setCreateMode('create');
+  //   setExportedAuthEntryXDR(null);
+  //   setImportAuthEntryXDR('');
+  //   setImportSessionId('');
+  //   setImportPlayer1('');
+  //   setImportPlayer1Points('');
+  //   setImportPlayer2Points(DEFAULT_POINTS);
+  //   setLoadSessionId('');
+  //   setAuthEntryCopied(false);
+  //   setShareUrlCopied(false);
+  //   setXdrParsing(false);
+  //   setXdrParseError(null);
+  //   setXdrParseSuccess(false);
+  //   setPlayer1Address(userAddress);
+  //   setPlayer1Points(DEFAULT_POINTS);
+  // };
+
+  const handleEndGame = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    const signer = getContractSigner();
+    // 1️⃣ If current game has winner, finalize on-chain
     if (gameState?.winner) {
       onGameComplete();
+       
+
+      await alphaDuelService.endGame(
+        sessionId,
+        userAddress, // caller must sign
+        signer
+      );
     }
 
+    // 2️⃣ Reset frontend state AFTER successful settlement
     actionLock.current = false;
     setGamePhase('create');
     setSessionId(createRandomSessionId());
     setGameState(null);
     setGuess([]);
     setNumericGuess(null);
-    setLoading(false);
     setQuickstartLoading(false);
-    setError(null);
-    setSuccess(null);
     setStatus(null);
+    setSuccess(null);
     setCreateMode('create');
     setExportedAuthEntryXDR(null);
     setImportAuthEntryXDR('');
@@ -202,7 +279,14 @@ export function AlphaDuelGame({
     setXdrParseSuccess(false);
     setPlayer1Address(userAddress);
     setPlayer1Points(DEFAULT_POINTS);
-  };
+
+  } catch (err: any) {
+    setError(err.message || "Failed to end previous game");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const parsePoints = (value: string): bigint | null => {
     try {
@@ -983,8 +1067,6 @@ const handleRevealWinnerWithProof = async () => {
       userAddress,
       hiddenNumbers,
       getHiddenWord(gameState?.hidden_word_id || 0).length,
-      player1GuessNumbers,
-      player2GuessNumbers,
       signer
     );
 
@@ -1050,16 +1132,60 @@ const numberToLetter = (num: number): string => {
 };
 
 
+// const countCorrectLetters = (guessNums: number[], hiddenWord: string) => {
+//   const hiddenLetters = hiddenWord.split("");
+
+//   const guessLetters = guessNums.map(numberToLetter);
+
+//   return guessLetters.filter((l) => hiddenLetters.includes(l)).length;
+// };
+
+// utils.ts or inside component
 const countCorrectLetters = (guessNums: number[], hiddenWord: string) => {
   const hiddenLetters = hiddenWord.split("");
-
   const guessLetters = guessNums.map(numberToLetter);
-
   return guessLetters.filter((l) => hiddenLetters.includes(l)).length;
 };
 
-const playerGuessLetters = isPlayer1 ? player1Guess : player2Guess;
+// New function: get winner / tie info
+// Helper: get winner based on correct letters
+const getWinnerByCorrectLetters = (
+  player1Guess: number[],
+  player2Guess: number[],
+  hiddenWord: string
+) => {
+  const count1 = countCorrectLetters(player1Guess, hiddenWord);
+  const count2 = countCorrectLetters(player2Guess, hiddenWord);
 
+  if (count1 === count2) return "tie";
+  if (count1 > count2) return 1;
+  return 2;
+};
+
+
+
+// Determine winner badge for frontend display based on guesses and hidden word
+const determineWinnerBadge = (
+  player1Guess: number[],
+  player2Guess: number[],
+  hiddenWord: string,
+  playerName: string,
+  userAddress: string
+) => {
+  const count1 = countCorrectLetters(player1Guess, hiddenWord);
+  const count2 = countCorrectLetters(player2Guess, hiddenWord);
+
+  if (count1 === count2) return "tie"; // Tie case
+  if (
+    (playerName === userAddress && count1 > count2) ||
+    (playerName !== userAddress && count2 > count1)
+  ) {
+    return "win";
+  }
+  return "lose";
+};
+
+// HANDLE MAKE GUESS (for normal guess flow without proof)
 const handleMakeGuess = async () => {
   const playerGuessLetters = isPlayer1 ? player1Guess : player2Guess;
   console.log('Player guess letters:', playerGuessLetters);
@@ -1095,6 +1221,8 @@ const handleMakeGuess = async () => {
   });
 };
 
+
+
 const handleCommitGuess = async () => {
   const playerGuessLetters = isPlayer1 ? player1Guess : player2Guess;
   console.log('Player guess letters:', playerGuessLetters);
@@ -1124,8 +1252,11 @@ const handleCommitGuess = async () => {
     localStorage.setItem("guessSalt", salt);
     localStorage.setItem("guessNumbers", JSON.stringify(playerGuessNumbers));
 
-      const signer = getContractSigner();
-      await alphaDuelService.commitGuess(sessionId, userAddress, commitment, signer);
+const signer = getContractSigner();
+await alphaDuelService.commitGuess(sessionId, userAddress, commitment, signer);
+// Then commit to backend so all tabs see it
+const playerNumber = isPlayer1 ? 1 : 2;
+await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuessNumbers);
 
       setSuccess(`Guess submitted: ${playerGuessLetters.join(', ')}`);
       setStatus("Guess committed successfully!");
@@ -1141,6 +1272,56 @@ const handleCommitGuess = async () => {
     }
   });
 };
+
+ //HANDLE GENERATE PROOF (for Reveal with Proof flow)
+  const handleGenerateProof = async () => {
+  try {
+    setProofLoading(true);
+    setError(null);
+    setSuccess(null)
+
+    const hiddenNumbers = encodeHiddenWord(getHiddenWord(gameState?.hidden_word_id || 0));
+
+    const result = await alphaDuelService.generateProofAndValidate(
+      sessionId,
+      hiddenNumbers,                      // hidden word numbers
+      getHiddenWord(gameState?.hidden_word_id || 0).length, // hidden_len
+    );
+
+    if (!result.isValid) {
+      throw new Error("Generated proof is invalid.");
+    }
+
+    setProofHex(result.proofHex);
+    setPublicInputsHex(result.publicInputs.join(", "));
+    setSuccess("Proof generated and verified successfully.");
+
+  } catch (err) {
+    console.error("Proof generation failed:", err);
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Failed to generate proof"
+    );
+  } finally {
+    setProofLoading(false);
+  }
+};
+
+useEffect(() => {
+  const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
+
+ ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  if (data.player === 1 && data.guessNumbers) setPlayer1GuessNumbers(data.guessNumbers);
+  if (data.player === 2 && data.guessNumbers) setPlayer2GuessNumbers(data.guessNumbers);
+};
+
+
+  return () => ws.close();
+}, [sessionId]);
+
+
 
   return (
     <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 shadow-xl border-2 border-purple-200">
@@ -1621,100 +1802,24 @@ const handleCommitGuess = async () => {
       >
         {loading ? 'Revealing...' : 'Reveal Winner'}
       </button>
-    </div>
-  </div>
-)}
+      <button
+  onClick={async () => {
+  if (!showHexOutput) {
+    await handleGenerateProof(); // your proof generation function
+  }
+  setShowHexOutput(prev => !prev);
+}}
+  className="
+   ml-4 px-10 py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-yellow-500 via-orange-500 to-amber-500 hover:from-yellow-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-500 transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 disabled:transform-none
+  "
+>
+  {showHexOutput ? "Hide Winner Proof" : "Generate Winner Proof"}
+</button>
 
-      {/* COMPLETE PHASE */}
-{gamePhase === 'complete' && gameState && (
-  <div className="space-y-6">
-
-    {/* Game Complete Card */}
-    <div className="p-8 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 rounded-2xl text-center shadow-xl">
-      <div className="text-6xl mb-4 animate-bounce">🏆</div>
-      <h3 className="text-2xl font-black text-gray-900 mb-3">Game Complete!</h3>
-
-      {/* Show Hidden Word */}
-      <div className="mb-6">
-        <p className="text-sm font-semibold text-gray-700 mb-1">Hidden Word:</p>
-        <div className="inline-flex flex-wrap gap-1 justify-center">
-          {getHiddenWord(gameState.hidden_word_id).split('').map((letter, idx) => (
-            <span
-              key={idx}
-              className="px-2 py-1 bg-yellow-100 border border-yellow-300 rounded shadow-sm font-bold text-gray-800"
-            >
-              {letter.toUpperCase()}
-            </span>
-          ))}
-        </div>
-      </div>
-      
-      {/* Result Summary */}
-      {result && (
-        <div className="text-lg font-semibold text-green-700 mb-6">
-          <pre className="whitespace-pre-wrap">{result}</pre>
-        </div>
-      )}
-
-      {/* Players Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {[1, 2].map((playerNum) => {
-          const playerName = playerNum === 1 ? gameState.player1 : gameState.player2;
-          // const playerGuess = playerNum === 1 ? gameState.player1_guess : gameState.player2_guess;
-          const playerGuess = playerNum === 1 ? player1Guess : player2Guess;
-          const playerPoints = playerNum === 1 ? gameState.player1_points : gameState.player2_points;
-          
-          return (
-            <div
-              key={playerNum}
-              className="p-4 bg-white/70 border border-green-200 rounded-xl shadow-inner hover:shadow-lg transition-shadow"
-            >
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">
-                Player {playerNum}
-              </p>
-              <p className="font-mono text-xs text-gray-700 mb-2">
-                {playerName.slice(0, 8)}...{playerName.slice(-4)}
-              </p>
-              <p className="text-xs font-semibold text-gray-600">
-                Points: {(Number(playerPoints) / 10000000).toFixed(2)}
-              </p>
-              <p className="text-sm font-semibold text-gray-800 mt-2">
-              {playerNum === 1 && "Player1 Guess: " + player1GuessNumbers.map(n => numberToLetter(n)).join('')}
-              {playerNum === 2 && " Player2 Guess: " + player2GuessNumbers.map(n => numberToLetter(n)).join('')}
- </p>
-
-   {/* Correct Count */}
-       <p className="mt-3 text-sm font-semibold text-gray-700">
-  Correct Letters:{" "}
-  <span className="font-black text-green-700">
-    {playerNum === 1 &&
-      countCorrectLetters(
-        player1GuessNumbers,
-        getHiddenWord(gameState.hidden_word_id)
-      )}
-
-    {playerNum === 2 &&
-      countCorrectLetters(
-        player2GuessNumbers,
-        getHiddenWord(gameState.hidden_word_id)
-      )}
-  </span>
- </p>
-
-          {/* Winner Badge */}
-          {gameState.winner === playerName && (
-  <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
-    {playerName === userAddress ? "🎉 You Won!" : "🏆 Winner"}
-  </div>
- )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ---------------------- */}
+  {/* ---------------------- */}
  {/* 🧾 Hex Output Section */}
  {/* ---------------------- */}
+{showHexOutput && (
  <div className="mt-16 p-4 bg-white/70 border border-green-200 rounded-xl shadow-inner hover:shadow-lg transition-shadow">
       <h3 className="text-lg font-bold text-gray-800 mb-3">Hex Output</h3>
 
@@ -1828,14 +1933,141 @@ const handleCommitGuess = async () => {
         </a>
       </div>
     </div>
+ )}
+    </div>
+  </div>
+)}
+
+      {/* COMPLETE PHASE */}
+{gamePhase === 'complete' && gameState && (
+  <div className="space-y-6">
+
+    {/* Game Complete Card */}
+    <div className="p-8 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 rounded-2xl text-center shadow-xl">
+      <div className="text-6xl mb-4 animate-bounce">🏆</div>
+      <h3 className="text-2xl font-black text-gray-900 mb-3">Game Complete!</h3>
+
+      {/* Show Hidden Word */}
+      <div className="mb-6">
+        <p className="text-sm font-semibold text-gray-700 mb-1">Hidden Word:</p>
+        <div className="inline-flex flex-wrap gap-1 justify-center">
+          {getHiddenWord(gameState.hidden_word_id).split('').map((letter, idx) => (
+            <span
+              key={idx}
+              className="px-2 py-1 bg-yellow-100 border border-yellow-300 rounded shadow-sm font-bold text-gray-800"
+            >
+              {letter.toUpperCase()}
+            </span>
+          ))}
+        </div>
+      </div>
+      
+      {/* Result Summary */}
+      {result && (
+        <div className="text-lg font-semibold text-green-700 mb-6">
+          <pre className="whitespace-pre-wrap">{result}</pre>
+        </div>
+      )}
+
+      {/* Players Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {[1, 2].map((playerNum) => {
+          const playerName = playerNum === 1 ? gameState.player1 : gameState.player2;
+          // const playerGuess = playerNum === 1 ? gameState.player1_guess : gameState.player2_guess;
+          const playerGuess = playerNum === 1 ? player1Guess : player2Guess;
+          const playerPoints = playerNum === 1 ? gameState.player1_points : gameState.player2_points;
+          
+          return (
+            <div
+              key={playerNum}
+              className="p-4 bg-white/70 border border-green-200 rounded-xl shadow-inner hover:shadow-lg transition-shadow"
+            >
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">
+                Player {playerNum}
+              </p>
+              <p className="font-mono text-xs text-gray-700 mb-2">
+                {playerName.slice(0, 8)}...{playerName.slice(-4)}
+              </p>
+              <p className="text-xs font-semibold text-gray-600">
+                Points: {(Number(playerPoints) / 10000000).toFixed(2)}
+              </p>
+              <p className="text-sm font-semibold text-gray-800 mt-2">
+              {playerNum === 1 && "Player1 Guess: " + player1GuessNumbers.map(n => numberToLetter(n)).join('')}
+              {playerNum === 2 && " Player2 Guess: " + player2GuessNumbers.map(n => numberToLetter(n)).join('')}
+ </p>
+
+   {/* Correct Count */}
+       <p className="mt-3 text-sm font-semibold text-gray-700">
+  Correct Letters:{" "}
+  <span className="font-black text-green-700">
+    {playerNum === 1 &&
+      countCorrectLetters(
+        player1GuessNumbers,
+        getHiddenWord(gameState.hidden_word_id)
+      )}
+
+    {playerNum === 2 &&
+      countCorrectLetters(
+        player2GuessNumbers,
+        getHiddenWord(gameState.hidden_word_id)
+      )}
+  </span>
+ </p>
+
+ 
+
+          {/* Winner Badge */}
+          {/* {gameState.winner === playerName && (
+  <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
+    {playerName === userAddress ? "🎉 You Won!" : "🏆 Winner"}
+  </div>
+ )} */}
+ {/* Winner Badge */}
+{/* Winner Badge */}
+{(() => {
+  const hidden = getHiddenWord(gameState.hidden_word_id);
+  const winner = getWinnerByCorrectLetters(
+    player1GuessNumbers,
+    player2GuessNumbers,
+    hidden
+  );
+
+  if (winner === "tie") {
+    return (
+      <div className="mt-4 inline-block px-4 py-2 rounded-full bg-yellow-500 text-white font-bold text-xs shadow-md">
+        🤝 It's a tie!
+      </div>
+    );
+  }
+
+  if (
+    (winner === 1 && playerNum === 1) ||
+    (winner === 2 && playerNum === 2)
+  ) {
+    return (
+      <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
+        {playerName === userAddress ? "🎉 You Won!" : "🏆 Winner"}
+      </div>
+    );
+  }
+
+  return null; // losing player
+})()}
+
+
+            </div>
+          );
+        })}
+      </div>
+ 
     </div>
 
     {/* Start New Game Button */}
     <button
-      onClick={handleStartNewGame}
-      className="mt-2 w-full py-4 rounded-xl bg-green-600 text-white font-bold text-gray-700 hover:from-green-500 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+      onClick={handleEndGame}
+      className="mt-2 w-full py-4 rounded-xl bg-red-600 text-white font-bold text-gray-700 hover:from-green-500 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
     >
-      Start New Game
+      End Game & Start New Game
     </button>
   </div>
  )}

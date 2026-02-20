@@ -636,6 +636,25 @@ export class AlphaDuelService {
     }
   }
 
+  async fetchGuesses(sessionId: number) {
+  const res = await fetch(`http://localhost:3001/getGuesses?sessionId=${sessionId}`);
+  if (!res.ok) throw new Error('Failed to fetch guesses');
+  return await res.json(); // { player1: number[], player2: number[] }
+};
+
+
+  async commitGuessToBackend (
+    sessionId: number, 
+    player: 1 | 2, 
+    guessNumbers: number[]
+  ) {
+  await fetch('http://localhost:3001/commitGuess', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, player, guessNumbers }),
+  });
+};
+
 
   async commitGuess(
     sessionId: number,
@@ -720,15 +739,13 @@ export class AlphaDuelService {
       throw err;
     }
   }
-
+ //REVEAL WINNER WITH PROOF (Noir + UltraHonk)
 
 async revealWinnerWithProof(
   sessionId: number,
   player: string,
   hidden: number[],
   hidden_len: number,
-  p1_guess: number[],
-  p2_guess: number[],
   signer: Pick<contract.ClientOptions, 'signTransaction' | 'signAuthEntry'>,
   authTtlMinutes?: number
 ) {
@@ -747,14 +764,19 @@ async revealWinnerWithProof(
       const noir = new Noir(circuitTyped);
       const backend = new UltraHonkBackend(circuit.bytecode);
 
+      const { player1, player2 } = await this.fetchGuesses(sessionId);
+
+     if (!player1 || !player2) throw new Error('Both players must have submitted guesses');
+
       console.log(
         "hidden_word:", hidden,
         "hidden_len:", hidden_len,
-        "p1_guess:", p1_guess,
-        "p2_guess:", p2_guess
+        "p1_guess:", player1,
+        "p2_guess:", player2
       );
 
-      const { witness, returnValue } = await noir.execute({ hidden, hidden_len, p1_guess, p2_guess });
+    
+      const { witness, returnValue } = await noir.execute({ hidden, hidden_len, p1_guess: player1, p2_guess: player2 });
 
       proof = await backend.generateProof(witness);
 
@@ -823,6 +845,109 @@ async revealWinnerWithProof(
       throw new Error('Transaction failed - check if both players have guessed and the game is still active');
     }
     throw new Error(`Failed to reveal winner with proof: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+//GENERATE PROOF AND VALIDATE LOCALLY (for testing/debugging)
+async generateProofAndValidate(
+  session_Id: number,
+  hidden: number[],
+  hidden_len: number
+): Promise<{
+  proofHex: string;
+  publicInputs: string[];
+  isValid: boolean;
+}> {
+  try {
+    const circuitTyped = circuit as unknown as CompiledCircuit;
+
+    const noir = new Noir(circuitTyped);
+    const backend = new UltraHonkBackend(circuit.bytecode);
+
+    console.log("Executing Noir circuit...");
+
+    const { player1, player2 } = await this.fetchGuesses(session_Id);
+
+     if (!player1 || !player2) throw new Error('Both players must have submitted guesses');
+
+    // 1️⃣ Execute circuit
+    const { witness } = await noir.execute({
+      hidden,
+      hidden_len,
+      p1_guess: player1,
+      p2_guess: player2,
+    });
+
+    // 2️⃣ Generate proof
+    const proof = await backend.generateProof(witness);
+
+    // 4️⃣ Verify proof locally
+    const isValid = await backend.verifyProof(proof);
+
+    console.log("Proof valid:", isValid);
+
+    // 5️⃣ Convert proof to hex string
+    const proofHex = Buffer.from(proof.proof).toString("hex");
+
+    return {
+      proofHex,
+      publicInputs: proof.publicInputs,
+      isValid,
+    };
+
+  } catch (err) {
+    console.error("Proof generation failed:", err);
+    throw new Error(
+      `Proof generation failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
+}
+
+//END GAME SERVICE CLASS
+async endGame(
+  sessionId: number,
+  callerAddress: string,
+  signer: Pick<contract.ClientOptions, 'signTransaction' | 'signAuthEntry'>,
+  authTtlMinutes?: number
+) {
+  const client = this.createSigningClient(callerAddress, signer);
+
+  const tx = await client.end_game(
+    {
+      session_id: sessionId,
+      caller: callerAddress,
+    },
+    DEFAULT_METHOD_OPTIONS
+  );
+
+  const validUntilLedgerSeq = authTtlMinutes
+    ? await calculateValidUntilLedger(RPC_URL, authTtlMinutes)
+    : await calculateValidUntilLedger(RPC_URL, DEFAULT_AUTH_TTL_MINUTES);
+
+  try {
+    const sentTx = await signAndSendViaLaunchtube(
+      tx,
+      DEFAULT_METHOD_OPTIONS.timeoutInSeconds,
+      validUntilLedgerSeq
+    );
+
+    if (sentTx.getTransactionResponse?.status === 'FAILED') {
+      const errorMessage = this.extractErrorFromDiagnostics(
+        sentTx.getTransactionResponse
+      );
+      throw new Error(`Transaction failed: ${errorMessage}`);
+    }
+
+    return sentTx.result;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Transaction failed!')) {
+      throw new Error(
+        'Transaction failed - ensure the game is finished and you are an authorized player'
+      );
+    }
+    throw err;
   }
 }
 
