@@ -120,6 +120,7 @@ export function AlphaDuelGame({
   const [copied, setCopied] = useState<string | null>(null);
   const [showHexOutput, setShowHexOutput] = useState(false);
   const [proofLoading, setProofLoading] = useState(false);
+  const [winnerAddr, setWinnerAddr] = useState<string | undefined>(undefined);
 
 
   
@@ -161,20 +162,6 @@ export function AlphaDuelGame({
     setTimeout(() => setCopied(null), 1500); // show temporary feedback
   };
 
-  // const handleLetterClick = (player: number, letter: string) => {
-  //   if (actionLock.current) return;
-  //   if (player === 1) {
-  //     if (!player1Guess.includes(letter) && player1Guess.length < 3) {
-  //       setPlayer1Guess([...player1Guess, letter]);
-  //       setPlayer1GuessNumbers([...player1Guess.map(letterToNumber), letterToNumber(letter)]);
-  //     }
-  //   } else {
-  //     if (!player2Guess.includes(letter) && player2Guess.length < 3) {
-  //       setPlayer2Guess([...player2Guess, letter]);
-  //       setPlayer2GuessNumbers([...player2Guess.map(letterToNumber), letterToNumber(letter)]);
-  //     }
-  //   }
-  // };
 
   const handleLetterClick = async (player: number, letter: string) => {
   if (actionLock.current) return;
@@ -202,39 +189,6 @@ export function AlphaDuelGame({
   }
 };
 
-
-  // const handleStartNewGame = () => {
-  //   if (gameState?.winner) {
-  //     onGameComplete();
-  //   }
-
-  //   actionLock.current = false;
-  //   setGamePhase('create');
-  //   setSessionId(createRandomSessionId());
-  //   setGameState(null);
-  //   setGuess([]);
-  //   setNumericGuess(null);
-  //   setLoading(false);
-  //   setQuickstartLoading(false);
-  //   setError(null);
-  //   setSuccess(null);
-  //   setStatus(null);
-  //   setCreateMode('create');
-  //   setExportedAuthEntryXDR(null);
-  //   setImportAuthEntryXDR('');
-  //   setImportSessionId('');
-  //   setImportPlayer1('');
-  //   setImportPlayer1Points('');
-  //   setImportPlayer2Points(DEFAULT_POINTS);
-  //   setLoadSessionId('');
-  //   setAuthEntryCopied(false);
-  //   setShareUrlCopied(false);
-  //   setXdrParsing(false);
-  //   setXdrParseError(null);
-  //   setXdrParseSuccess(false);
-  //   setPlayer1Address(userAddress);
-  //   setPlayer1Points(DEFAULT_POINTS);
-  // };
 
   const handleEndGame = async () => {
   try {
@@ -1079,6 +1033,7 @@ const handleRevealWinnerWithProof = async () => {
 
       // 6️⃣ Determine winner for frontend display
       const winner = updatedGame.winner;
+      setWinnerAddr(updatedGame.winner);
       console.log("Winner from contract:", winner);
 
       setGamePhase('complete');
@@ -1089,8 +1044,8 @@ const handleRevealWinnerWithProof = async () => {
       } else {
         setSuccess(
           winner === userAddress
-            ? `🎉 You won! ${winner.slice(0, 8)}...${winner.slice(-4)}`
-            : `Game complete! Winner revealed: ${winner.slice(0, 8)}...${winner.slice(-4)}`
+            ? "🎉 You won!"
+            : "Game complete!"
         );
       }
 
@@ -2017,13 +1972,13 @@ useEffect(() => {
 {/* Winner Badge */}
 {(() => {
   const hidden = getHiddenWord(gameState.hidden_word_id);
-  const winner = getWinnerByCorrectLetters(
+  const winnerL = getWinnerByCorrectLetters(
     player1GuessNumbers,
     player2GuessNumbers,
     hidden
   );
 
-  if (winner === "tie") {
+  if (winnerL === "tie") {
     return (
       <div className="mt-4 inline-block px-4 py-2 rounded-full bg-yellow-500 text-white font-bold text-xs shadow-md">
         🤝 It's a tie!
@@ -2032,12 +1987,12 @@ useEffect(() => {
   }
 
   if (
-    (winner === 1 && playerNum === 1) ||
-    (winner === 2 && playerNum === 2)
+    (winnerL === 1 && playerNum === 1) ||
+    (winnerL === 2 && playerNum === 2)
   ) {
     return (
       <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
-        {playerName === userAddress ? "🎉 You Won!" : "🏆 Winner"}
+        {winnerAddr === playerName && userAddress ? "🎉 You Won!" : "🏆 Winner"}
       </div>
     );
   }
