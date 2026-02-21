@@ -636,24 +636,59 @@ export class AlphaDuelService {
     }
   }
 
-  async fetchGuesses(sessionId: number) {
-  const res = await fetch(`http://localhost:3001/getGuesses?sessionId=${sessionId}`);
-  if (!res.ok) throw new Error('Failed to fetch guesses');
+//   async fetchGuesses(sessionId: number) {
+//   const res = await fetch(`http://localhost:3001/getGuesses?sessionId=${sessionId}`);
+//   if (!res.ok) throw new Error('Failed to fetch guesses');
+//   return await res.json(); // { player1: number[], player2: number[] }
+// };
+
+async fetchGuesses(sessionId: number) {
+  const BASE_URL =
+    window.location.hostname === "localhost"
+      ? "http://localhost:3001"
+      : "https://ws-alphaduel.vercel.app";
+
+  const res = await fetch(
+    `${BASE_URL}/getGuesses?sessionId=${sessionId}`
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch guesses");
+  }
+
   return await res.json(); // { player1: number[], player2: number[] }
-};
+}
 
 
-  async commitGuessToBackend (
-    sessionId: number, 
-    player: 1 | 2, 
-    guessNumbers: number[]
-  ) {
-  await fetch('http://localhost:3001/commitGuess', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+//   async commitGuessToBackend (
+//     sessionId: number, 
+//     player: 1 | 2, 
+//     guessNumbers: number[]
+//   ) {
+//   await fetch('http://localhost:3001/commitGuess', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ sessionId, player, guessNumbers }),
+//   });
+// };
+
+async commitGuessToBackend(
+  sessionId: number,
+  player: 1 | 2,
+  guessNumbers: number[]
+) {
+  const BASE_URL =
+    window.location.hostname === "localhost"
+      ? "http://localhost:3001"
+      : "https://ws-alphaduel.vercel.app";
+
+  await fetch(`${BASE_URL}/commitGuess`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionId, player, guessNumbers }),
   });
-};
+}
+
 
 
   async commitGuess(
@@ -663,11 +698,6 @@ export class AlphaDuelService {
     signer: Pick<contract.ClientOptions, 'signTransaction' | 'signAuthEntry'>,
     authTtlMinutes?: number
   ) {
-    // if (!Array.isArray(guessCommitment) || guessCommitment.length !== 32) {
-    //   throw new Error('Guess commitment must be a 32-byte Uint8Array');
-
-    // }
-
     // Convert to Buffer
     const guessCommitmentBuffer = Buffer.from(guessCommitment);
 
