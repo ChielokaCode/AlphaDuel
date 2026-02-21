@@ -66,6 +66,11 @@ app.get('/getGuesses', (req, res) => {
   res.send(sessionGuesses);
 });
 
+// Health check endpoint
+app.get("/", (req, res) => {
+  console.log(`[${new Date().toISOString()}] Health check hit from ${req.ip}`);
+  res.status(200).send("websocket online");
+});
 
 // ---------------------
 // WebSocket Upgrade
