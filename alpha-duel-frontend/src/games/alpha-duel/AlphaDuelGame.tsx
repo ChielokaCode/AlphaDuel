@@ -235,7 +235,8 @@ export function AlphaDuelGame({
     setPlayer1Points(DEFAULT_POINTS);
 
   } catch (err: any) {
-    setError(err.message || "Failed to end previous game");
+    console.error("End game error:", err);
+    setError("Failed to end previous game");
   } finally {
     setLoading(false);
   }
@@ -2028,12 +2029,13 @@ useEffect(() => {
     </div>
 
     {/* Start New Game Button */}
-    <button
-      onClick={handleEndGame}
-      className="mt-2 w-full py-4 rounded-xl bg-red-600 text-white font-bold text-gray-700 hover:from-green-500 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-    >
-      End Game & Start New Game
-    </button>
+   <button
+  onClick={handleEndGame}
+  disabled={isBusy || loading}
+  className="mt-2 w-full py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
+>
+  {loading ? "Ending Game..." : "⚡ End Game & Start New Game"}
+</button>
   </div>
  )}
     </div>
