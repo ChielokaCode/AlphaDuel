@@ -1087,14 +1087,6 @@ const numberToLetter = (num: number): string => {
 };
 
 
-// const countCorrectLetters = (guessNums: number[], hiddenWord: string) => {
-//   const hiddenLetters = hiddenWord.split("");
-
-//   const guessLetters = guessNums.map(numberToLetter);
-
-//   return guessLetters.filter((l) => hiddenLetters.includes(l)).length;
-// };
-
 // utils.ts or inside component
 const countCorrectLetters = (guessNums: number[], hiddenWord: string) => {
   const hiddenLetters = hiddenWord.split("");
