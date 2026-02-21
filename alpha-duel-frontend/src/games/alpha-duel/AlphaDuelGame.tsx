@@ -1256,10 +1256,10 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
   }
 };
 
-const BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:3001"
-    : "https://ws-alphaduel.vercel.app";
+// const BASE_URL =
+//   window.location.hostname === "localhost"
+//     ? "ws://localhost:3001"
+//     : "wss://ws-alphaduel.vercel.app";
 
 // useEffect(() => {
 //   const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
@@ -1275,48 +1275,43 @@ const BASE_URL =
 // }, [sessionId]);
 
 
-useEffect(() => {
-  const ws = new WebSocket(`${BASE_URL}?sessionId=${sessionId}`);
+// useEffect(() => {
+//   const ws = new WebSocket(`${BASE_URL}?sessionId=${sessionId}`);
 
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
+//   ws.onmessage = (event) => {
+//     try {
+//       const data = JSON.parse(event.data);
+//         console.log("Received Player 1 guess numbers from WS:", data.player1);
+//         setPlayer1GuessNumbers(data.player1);
 
-      if (data.player === 1 && data.guessNumbers)
-        setPlayer1GuessNumbers(data.guessNumbers);
+//         console.log("Received Player 2 guess numbers from WS:", data.player2);
+//         setPlayer2GuessNumbers(data.player2);
+//     } catch (err) {
+//       console.error("WebSocket parse error:", err);
+//     }
+//   };
 
-      if (data.player === 2 && data.guessNumbers)
-        setPlayer2GuessNumbers(data.guessNumbers);
-    } catch (err) {
-      console.error("WebSocket parse error:", err);
-    }
-  };
-
-  return () => ws.close();
-}, [sessionId]);
-
-  const collectFetchGuessesFromWS = async () => {
-    try{
-    const result = await alphaDuelService.fetchGuesses(sessionId);
-     const player1 = result.player1 ?? [];
-     const  player2 = result.player2 ?? [];
-
-     setPlayer1GuessNumbers(player1);
-     setPlayer2GuessNumbers(player2);
-
-    } catch (err) {
-      console.log("Error fetching Player Guesses" + err);
-    }
-  }
+//   return () => ws.close();
+// }, [sessionId]);
 
  useEffect(() => {
   if (!sessionId) return;
 
-  const controller = new AbortController();
+  const loadGuesses = async () => {
+    try {
+      const { player1, player2 } =
+        await alphaDuelService.fetchGuesses(sessionId);
+        console.log("Fetched Player 1 guess numbers:", player1);
+        console.log("Fetched Player 2 guess numbers:", player2);
 
-  collectFetchGuessesFromWS();
+      setPlayer1GuessNumbers(player1 ?? []);
+      setPlayer2GuessNumbers(player2 ?? []);
+    } catch (err) {
+      console.error("Failed fetching guesses:", err);
+    }
+  };
 
-  return () => controller.abort();
+  loadGuesses();
 }, [sessionId]);
 
 
