@@ -1416,15 +1416,33 @@ useEffect(() => {
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Your Points
+                Your Points (0.1 - {Number(availablePoints) / 10000000} Points)
               </label>
               <input
-                type="text"
-                value={player1Points}
-                onChange={(e) => setPlayer1Points(e.target.value)}
-                placeholder="0.1"
-                className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100 text-sm font-medium"
-              />
+  type="number"
+  value={player1Points}
+  onChange={(e) => {
+  const value = e.target.value;
+
+  const maxPoints = Number(availablePoints) / 10000000;
+  const minPoints = 0;
+
+  const numericValue = Number(value);
+
+  // Reject non-numbers
+  if (isNaN(numericValue)) return;
+
+  // Enforce range constraints
+  if (
+    numericValue >= minPoints &&
+    numericValue <= maxPoints
+  ) {
+    setPlayer1Points(value);
+  }
+}}
+  placeholder="0.1"
+  className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100 text-sm font-medium"
+/>
               <p className="text-xs font-semibold text-gray-600 mt-1">
                 Available: {(Number(availablePoints) / 10000000).toFixed(2)} Points
               </p>
@@ -1571,14 +1589,34 @@ useEffect(() => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Your Points *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Your Points (0.1 - {Number(availablePoints) / 10000000} Points)</label>
                       <input
-                        type="text"
-                        value={importPlayer2Points}
-                        onChange={(e) => setImportPlayer2Points(e.target.value)}
-                        placeholder="e.g., 0.1"
-                        className="w-full px-4 py-2 rounded-xl bg-white border-2 border-blue-200 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-xs"
-                      />
+  type="number"
+  value={importPlayer2Points}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    const maxPoints = Number(availablePoints) / 10000000;
+    const minPoints = 0;
+
+
+    const numericValue = Number(value);
+
+    // ❌ Reject non-numeric input
+    if (isNaN(numericValue)) return;
+
+    // ✅ Enforce game staking rules
+    if (
+      numericValue >= minPoints &&
+      numericValue <= maxPoints
+    ) {
+      setImportPlayer2Points(value);
+    }
+  }}
+  placeholder="e.g., 0.1"
+  className="w-full px-4 py-2 rounded-xl bg-white border-2 border-blue-200 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-xs"
+/>
+<p>Available Points: {(Number(availablePoints) / 10000000).toFixed(2)} Points</p>
                     </div>
                   </div>
                 </div>
@@ -1868,7 +1906,7 @@ useEffect(() => {
           Deployed Game Contract
         </label>
         <textarea
-          value="CAQZEXWXTC2KSIMOVZUTMSL5O3ULKDSLLF2LRWIB7GYHJWVZINVGSAC3"
+          value="CC674UPBAU43Q7D4SL6GLLTMSAQOZBLPHYER5ZGDNMU3GA5P7ONNAVLK"
           readOnly
           className="
             w-full
@@ -1886,7 +1924,7 @@ useEffect(() => {
           "
         />
         <button
-          onClick={() => handleCopy("CAPFXZGLINDRLETIES2G7STFJJ4OJYHX66ES4FHUQFVCTRTJNZVKIZWY", "gameContract")}
+          onClick={() => handleCopy("CC674UPBAU43Q7D4SL6GLLTMSAQOZBLPHYER5ZGDNMU3GA5P7ONNAVLK", "gameContract")}
           className="absolute -top-2 right-2 p-1 rounded-md bg-green-200 text-black hover:bg-green-300"
         >
           <Clipboard className="w-4 h-4" />
@@ -1896,7 +1934,7 @@ useEffect(() => {
             Copied!
           </span>
         )}
-        <a href="https://stellar.expert/explorer/testnet/contract/CAPFXZGLINDRLETIES2G7STFJJ4OJYHX66ES4FHUQFVCTRTJNZVKIZWY?filter=history" target="_blank" rel="noopener noreferrer" className="absolute -top-2 right-16 text-sm text-blue-600 hover:text-blue-800">
+        <a href="https://stellar.expert/explorer/testnet/contract/CC674UPBAU43Q7D4SL6GLLTMSAQOZBLPHYER5ZGDNMU3GA5P7ONNAVLK?filter=history" target="_blank" rel="noopener noreferrer" className="absolute -top-2 right-16 text-sm text-blue-600 hover:text-blue-800">
           View on Explorer
         </a>
       </div>
@@ -1941,7 +1979,7 @@ useEffect(() => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {[1, 2].map((playerNum) => {
           const playerName = playerNum === 1 ? gameState.player1 : gameState.player2;
-          const playerGuess = playerNum === 1 ? player1Guess : player2Guess;
+          // const playerGuess = playerNum === 1 ? player1GuessNumbers.map(n => numberToLetter(n)) : player2Guess;
           const playerPoints = playerNum === 1 ? gameState.player1_points : gameState.player2_points;
           
           return (
@@ -1961,6 +1999,7 @@ useEffect(() => {
               <p className="text-sm font-semibold text-gray-800 mt-2">
               {playerNum === 1 && "Player1 Guess: " + player1GuessNumbers.map(n => numberToLetter(n)).join('')}
               {playerNum === 2 && " Player2 Guess: " + player2GuessNumbers.map(n => numberToLetter(n)).join('')}
+              
                </p>
 
            {/* Correct Count */}

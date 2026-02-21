@@ -202,10 +202,6 @@ impl AlphaDuelContract {
     pub fn make_guess(env: Env, session_id: u32, player: Address, guess: Vec<u32>) -> Result<(), Error> {
     player.require_auth();
 
-    // if guess.len() != 3 {
-    //     panic_with_error!(env, Error::InvalidGuessLength);
-    // }
-
     let key = DataKey::Game(session_id);
     let mut game: Game = env
         .storage()
@@ -232,7 +228,7 @@ impl AlphaDuelContract {
     }
 
     env.storage()
-        .temporary() // change from persistent() to temporary()
+        .temporary()
         .set(&key, &game);
 
     Ok(())
@@ -316,14 +312,6 @@ pub fn commit_guess(
     let p1_correct = count_matches(&hidden, &p1_guess);
     let p2_correct = count_matches(&hidden, &p2_guess);
 
-    // 4️⃣ Determine winner
-    // let winner: Option<Address> = if p1_correct > p2_correct {
-    //     Some(game.player1.clone())
-    // } else if p2_correct > p1_correct {
-    //     Some(game.player2.clone())
-    // } else {
-    //     None
-    // };
     let winner = if p1_correct >= p2_correct {
             game.player1.clone()
         } else {
@@ -334,17 +322,6 @@ pub fn commit_guess(
     // 5️⃣ Save winner to game
     game.winner = Some(winner.clone());
     env.storage().temporary().set(&key, &game);
-
-    // 6️⃣ Notify GameHub
-    let game_hub_addr: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GameHubAddress)
-            .expect("GameHub address not set");
-
-    let game_hub = GameHubClient::new(&env, &game_hub_addr);
-    let player1_won = winner == game.player1;
-    game_hub.end_game(&session_id, &player1_won);
 
     Ok(winner)
 }
@@ -367,25 +344,19 @@ pub fn commit_guess(
         .get(&key)
         .ok_or(Error::GameNotFound)?;
 
-    // Game must not already be finished
-    if game.winner.is_some() {
-        panic_with_error!(env, Error::GameAlreadyEnded);
-    }
-
     // Both players must have committed
     if game.player1_guess_commitment.is_none() || game.player2_guess_commitment.is_none() {
         panic_with_error!(env, Error::BothPlayersNotGuessed);
     }
 
+    // ✅ Prevent double settlement
+    if game.winner.is_some() {
+        panic!("Game already settled");
+    }
+
     // ---------------------------------------------------
     // ✅ Step 1: Verify proof (OFF-CHAIN for now)
     // ---------------------------------------------------
-    //
-    // Soroban cannot run Barretenberg verifier yet.
-    // So today: proof verification must happen in backend.
-    //
-    // This function still accepts proof so contract API is future-proof.
-    //
     if proof.len() == 0 {
         panic!("Proof missing");
     }
@@ -415,12 +386,55 @@ pub fn commit_guess(
     // ---------------------------------------------------
     // ✅ Step 3: Save winner on-chain
     // ---------------------------------------------------
+
+    if winner == game.player1 {
+
+    // Player1 wins → take player2 points
+    game.player1_points += game.player2_points;
+    game.player2_points = 0;
+
+} else if winner == game.player2 {
+
+    // Player2 wins → take player1 points
+    game.player2_points += game.player1_points;
+    game.player1_points = 0;
+
+} else {
+    panic!("Winner address does not match players");
+}
+
     game.winner = Some(winner.clone());
     env.storage().temporary().set(&key, &game);
 
-    // ---------------------------------------------------
-    // ✅ Step 4: Notify GameHub
-    // ---------------------------------------------------
+    Ok(winner)
+}
+
+
+ //  /* -------------------------------------------- */
+    /* END GAME AND REPORT TO HUB                   */
+    /* -------------------------------------------- */
+pub fn end_game(env: Env, session_id: u32, caller: Address) -> Result<(), Error> {
+
+    // Caller must sign
+    caller.require_auth();
+
+    let key = DataKey::Game(session_id);
+
+    let game: Game = env
+        .storage()
+        .temporary()
+        .get(&key)
+        .ok_or(Error::GameNotFound)?;
+
+           // Both players must have committed
+    if game.player1_guess_commitment.is_none() || game.player2_guess_commitment.is_none() {
+        panic_with_error!(env, Error::BothPlayersNotGuessed);
+    }
+
+
+    // Ensure winner exists
+    let winner = game.winner.clone().ok_or(Error::BothPlayersNotGuessed)?;
+
     let game_hub_addr: Address = env
         .storage()
         .instance()
@@ -430,30 +444,12 @@ pub fn commit_guess(
     let game_hub = GameHubClient::new(&env, &game_hub_addr);
 
     let player1_won = winner == game.player1;
+
     game_hub.end_game(&session_id, &player1_won);
 
-    Ok(winner)
+    Ok(())
 }
 
-
-
-    /* -------------------------------------------- */
-    /* COUNT MATCHES                                */
-    /* -------------------------------------------- */
-    // fn count_matches(hidden: Vec<u32>, guess: Vec<u32>) -> u32 {
-    //     let mut count = 0;
-
-    //     for g in guess.iter() {
-    //         for h in hidden.iter() {
-    //             if g == h {
-    //                 count += 1;
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     count
-    // }
 
     /* -------------------------------------------- */
     /* FULL 50 WORD POOL (Frontend Exact Match)     */

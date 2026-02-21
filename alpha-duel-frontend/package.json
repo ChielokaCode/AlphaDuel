@@ -12,6 +12,7 @@
   "dependencies": {
     "@aztec/bb.js": "3.0.0-nightly.20251104",
     "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@2.0.0-beta.5",
+    "@creit.tech/stellar-wallets-kit": "^1.9.5",
     "@noble/hashes": "^2.0.1",
     "@noir-lang/noir_js": "1.0.0-beta.15",
     "@stellar/freighter-api": "^6.0.1",
