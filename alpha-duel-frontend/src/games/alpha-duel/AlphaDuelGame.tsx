@@ -1053,8 +1053,6 @@ const handleRevealWinnerWithProof = async () => {
       // ✅ Store proof + public inputs for Complete Phase display
       setProofHex(result.proof);
       setPublicInputsHex(result.publicInputs);
-      setPlayer1GuessNumbers(result.player1);
-      setPlayer2GuessNumbers(result.player2);
 
       // 8️⃣ Refresh standings
       onStandingsRefresh();
@@ -1260,8 +1258,8 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
 
 const BASE_URL =
   window.location.hostname === "localhost"
-    ? "ws://localhost:3001"
-    : "wss://ws-alphaduel.vercel.app";
+    ? "http://localhost:3001"
+    : "https://ws-alphaduel.vercel.app";
 
 // useEffect(() => {
 //   const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
@@ -1295,6 +1293,30 @@ useEffect(() => {
   };
 
   return () => ws.close();
+}, [sessionId]);
+
+  const collectFetchGuessesFromWS = async () => {
+    try{
+    const result = await alphaDuelService.fetchGuesses(sessionId);
+     const player1 = result.player1 ?? [];
+     const  player2 = result.player2 ?? [];
+
+     setPlayer1GuessNumbers(player1);
+     setPlayer2GuessNumbers(player2);
+
+    } catch (err) {
+      console.log("Error fetching Player Guesses" + err);
+    }
+  }
+
+ useEffect(() => {
+  if (!sessionId) return;
+
+  const controller = new AbortController();
+
+  collectFetchGuessesFromWS();
+
+  return () => controller.abort();
 }, [sessionId]);
 
 
@@ -2031,7 +2053,7 @@ useEffect(() => {
     {/* Start New Game Button */}
    <button
   onClick={handleEndGame}
-  disabled={isBusy || loading}
+  disabled={loading}
   className="mt-2 w-full py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
 >
   {loading ? "Ending Game..." : "⚡ End Game & Start New Game"}
