@@ -868,15 +868,6 @@ async revealWinnerWithProof(
   }
 }
 
-  async collectGuessFromFetchGuess(
-    sessionId: number
-  ){
-  const {player1, player2 } = await this.fetchGuesses(sessionId);
-
-  if (!player1 || !player2) throw new Error('Both players must have submitted guesses');
-
-  return {player1, player2};
-}
 
 //GENERATE PROOF AND VALIDATE LOCALLY (for testing/debugging)
 async generateProofAndValidate(

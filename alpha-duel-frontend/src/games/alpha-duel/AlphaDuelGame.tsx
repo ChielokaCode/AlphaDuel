@@ -2027,10 +2027,9 @@ useEffect(() => {
     {/* Start New Game Button */}
    <button
   onClick={handleEndGame}
-  disabled={loading}
   className="mt-2 w-full py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
 >
-  {loading ? "Ending Game..." : "⚡ End Game & Start New Game"}
+  ⚡ End Game & Start New Game
 </button>
   </div>
  )}
