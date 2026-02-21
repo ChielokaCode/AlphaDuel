@@ -1256,11 +1256,6 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
   }
 };
 
-// const BASE_URL =
-//   window.location.hostname === "localhost"
-//     ? "ws://localhost:3001"
-//     : "wss://ws-alphaduel.vercel.app";
-
 // useEffect(() => {
 //   const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
 
@@ -1294,24 +1289,54 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
 //   return () => ws.close();
 // }, [sessionId]);
 
- useEffect(() => {
+//  useEffect(() => {
+//   const loadGuesses = async () => {
+//     try {
+//       const { player1, player2 } =
+//         await alphaDuelService.collectGuessFromFetchGuess(sessionId);
+//         console.log("Fetched Player 1 guess numbers:", player1);
+//         console.log("Fetched Player 2 guess numbers:", player2);
+//       setPlayer1GuessNumbers(player1);
+//       setPlayer2GuessNumbers(player2);
+//     } catch (err: any) {
+//       console.error("Failed to fetch guesses:", err);
+//     }
+//   };
+
+//   if (sessionId) {
+//     loadGuesses();
+//   }
+// }, [sessionId]);
+
+useEffect(() => {
   if (!sessionId) return;
 
-  const loadGuesses = async () => {
-    try {
-      const { player1, player2 } =
-        await alphaDuelService.fetchGuesses(sessionId);
-        console.log("Fetched Player 1 guess numbers:", player1);
-        console.log("Fetched Player 2 guess numbers:", player2);
+  const WS_BASE =
+    window.location.hostname === "localhost"
+      ? "ws://localhost:3001"
+      : "wss://ws-alphaduel.vercel.app";
 
-      setPlayer1GuessNumbers(player1 ?? []);
-      setPlayer2GuessNumbers(player2 ?? []);
+  const ws = new WebSocket(`${WS_BASE}?sessionId=${sessionId}`);
+
+  ws.onopen = () => console.log("WS connected");
+  ws.onerror = (err) => console.error("WS error:", err);
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log("WS message:", data);
+
+      if (data.player === 1 && data.guessNumbers)
+        setPlayer1GuessNumbers(data.guessNumbers);
+
+      if (data.player === 2 && data.guessNumbers)
+        setPlayer2GuessNumbers(data.guessNumbers);
     } catch (err) {
-      console.error("Failed fetching guesses:", err);
+      console.error("WebSocket parse error:", err);
     }
   };
 
-  loadGuesses();
+  return () => ws.close();
 }, [sessionId]);
 
 
@@ -1985,31 +2010,31 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
               <p className="text-sm font-semibold text-gray-800 mt-2">
               {playerNum === 1 && "Player1 Guess: " + player1GuessNumbers.map(n => numberToLetter(n)).join('')}
               {playerNum === 2 && " Player2 Guess: " + player2GuessNumbers.map(n => numberToLetter(n)).join('')}
- </p>
+               </p>
 
-   {/* Correct Count */}
+           {/* Correct Count */}
        <p className="mt-3 text-sm font-semibold text-gray-700">
-  Correct Letters:{" "}
-  <span className="font-black text-green-700">
-    {playerNum === 1 &&
+            Correct Letters:{" "}
+          <span className="font-black text-green-700">
+       {playerNum === 1 &&
       countCorrectLetters(
         player1GuessNumbers,
         getHiddenWord(gameState.hidden_word_id)
       )}
 
-    {playerNum === 2 &&
+     {playerNum === 2 &&
       countCorrectLetters(
         player2GuessNumbers,
         getHiddenWord(gameState.hidden_word_id)
       )}
-  </span>
- </p>
+     </span>
+      </p>
 
  
-{/* Winner Badge */}
-{(() => {
-  const hidden = getHiddenWord(gameState.hidden_word_id);
-  const winnerL = getWinnerByCorrectLetters(
+          {/* Winner Badge */}
+       {(() => {
+     const hidden = getHiddenWord(gameState.hidden_word_id);
+     const winnerL = getWinnerByCorrectLetters(
     player1GuessNumbers,
     player2GuessNumbers,
     hidden
