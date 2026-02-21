@@ -171,7 +171,7 @@ export function AlphaDuelGame({
       const updated = [...player1Guess, letter];
       setPlayer1Guess(updated);
       const updatedNumbers = updated.map(letterToNumber);
-      //setPlayer1GuessNumbers(updatedNumbers);
+      setPlayer1GuessNumbers(updatedNumbers);
 
       // send to backend for sync
       await alphaDuelService.commitGuessToBackend(sessionId, 1, updatedNumbers);
@@ -181,7 +181,7 @@ export function AlphaDuelGame({
       const updated = [...player2Guess, letter];
       setPlayer2Guess(updated);
       const updatedNumbers = updated.map(letterToNumber);
-      //setPlayer2GuessNumbers(updatedNumbers);
+      setPlayer2GuessNumbers(updatedNumbers);
 
       // send to backend for sync
       await alphaDuelService.commitGuessToBackend(sessionId, 2, updatedNumbers);
@@ -1053,6 +1053,8 @@ const handleRevealWinnerWithProof = async () => {
       // ✅ Store proof + public inputs for Complete Phase display
       setProofHex(result.proof);
       setPublicInputsHex(result.publicInputs);
+      setPlayer1GuessNumbers(result.player1);
+      setPlayer2GuessNumbers(result.player2);
 
       // 8️⃣ Refresh standings
       onStandingsRefresh();
@@ -1256,57 +1258,6 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
   }
 };
 
-// useEffect(() => {
-//   const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
-
-//  ws.onmessage = (event) => {
-//   const data = JSON.parse(event.data);
-//   if (data.player === 1 && data.guessNumbers) setPlayer1GuessNumbers(data.guessNumbers);
-//   if (data.player === 2 && data.guessNumbers) setPlayer2GuessNumbers(data.guessNumbers);
-// };
-
-
-//   return () => ws.close();
-// }, [sessionId]);
-
-
-// useEffect(() => {
-//   const ws = new WebSocket(`${BASE_URL}?sessionId=${sessionId}`);
-
-//   ws.onmessage = (event) => {
-//     try {
-//       const data = JSON.parse(event.data);
-//         console.log("Received Player 1 guess numbers from WS:", data.player1);
-//         setPlayer1GuessNumbers(data.player1);
-
-//         console.log("Received Player 2 guess numbers from WS:", data.player2);
-//         setPlayer2GuessNumbers(data.player2);
-//     } catch (err) {
-//       console.error("WebSocket parse error:", err);
-//     }
-//   };
-
-//   return () => ws.close();
-// }, [sessionId]);
-
-//  useEffect(() => {
-//   const loadGuesses = async () => {
-//     try {
-//       const { player1, player2 } =
-//         await alphaDuelService.collectGuessFromFetchGuess(sessionId);
-//         console.log("Fetched Player 1 guess numbers:", player1);
-//         console.log("Fetched Player 2 guess numbers:", player2);
-//       setPlayer1GuessNumbers(player1);
-//       setPlayer2GuessNumbers(player2);
-//     } catch (err: any) {
-//       console.error("Failed to fetch guesses:", err);
-//     }
-//   };
-
-//   if (sessionId) {
-//     loadGuesses();
-//   }
-// }, [sessionId]);
 
 useEffect(() => {
   if (!sessionId) return;
@@ -2030,6 +1981,9 @@ useEffect(() => {
      </span>
       </p>
 
+{/* <div className="mt-4 inline-block px-4 py-2 rounded-full bg-green-600 text-white font-bold text-xs shadow-md">
+        {winnerAddr === playerName && userAddress ? "🎉 You Won!" : "You Lost"}
+      </div> */}
  
           {/* Winner Badge */}
        {(() => {
@@ -2060,7 +2014,7 @@ useEffect(() => {
   }
 
   return null; // losing player
-})()}
+})()} 
 
 
             </div>

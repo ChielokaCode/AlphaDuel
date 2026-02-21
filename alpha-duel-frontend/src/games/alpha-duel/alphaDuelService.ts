@@ -767,6 +767,8 @@ async revealWinnerWithProof(
   try {
     let proof: any;
     let winnerFlagNum: number;
+    let player1: number[] = [];
+    let player2: number[] = [];
 
     // ----------------------
     // 🟢 Noir execution and proof generation
@@ -777,7 +779,10 @@ async revealWinnerWithProof(
       const noir = new Noir(circuitTyped);
       const backend = new UltraHonkBackend(circuit.bytecode);
 
-      const {player1, player2 } = await this.fetchGuesses(sessionId);
+      const guesses = await this.fetchGuesses(sessionId);
+
+      player1 = guesses.player1 || [];
+      player2 = guesses.player2 || [];
 
      if (!player1 || !player2) throw new Error('Both players must have submitted guesses');
 
@@ -849,7 +854,9 @@ async revealWinnerWithProof(
     return {
       winner: sentTx.result,
       proof: Buffer.from(proof.proof).toString("hex"),
-      publicInputs: proof.publicInputs
+      publicInputs: proof.publicInputs,
+      player1,
+      player2,
     };
 
   } catch (err) {
@@ -859,6 +866,16 @@ async revealWinnerWithProof(
     }
     throw new Error(`Failed to reveal winner with proof: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+  async collectGuessFromFetchGuess(
+    sessionId: number
+  ){
+  const {player1, player2 } = await this.fetchGuesses(sessionId);
+
+  if (!player1 || !player2) throw new Error('Both players must have submitted guesses');
+
+  return {player1, player2};
 }
 
 //GENERATE PROOF AND VALIDATE LOCALLY (for testing/debugging)
@@ -1024,6 +1041,7 @@ async endGame(
     }
   }
 }
+
 
 // Note: Create instances with a specific contract ID
 // Example: const alphaDuelService = new AlphaDuelService(contractId);
