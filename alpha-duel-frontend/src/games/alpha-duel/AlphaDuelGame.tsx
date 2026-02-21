@@ -171,7 +171,7 @@ export function AlphaDuelGame({
       const updated = [...player1Guess, letter];
       setPlayer1Guess(updated);
       const updatedNumbers = updated.map(letterToNumber);
-      setPlayer1GuessNumbers(updatedNumbers);
+      //setPlayer1GuessNumbers(updatedNumbers);
 
       // send to backend for sync
       await alphaDuelService.commitGuessToBackend(sessionId, 1, updatedNumbers);
@@ -181,7 +181,7 @@ export function AlphaDuelGame({
       const updated = [...player2Guess, letter];
       setPlayer2Guess(updated);
       const updatedNumbers = updated.map(letterToNumber);
-      setPlayer2GuessNumbers(updatedNumbers);
+      //setPlayer2GuessNumbers(updatedNumbers);
 
       // send to backend for sync
       await alphaDuelService.commitGuessToBackend(sessionId, 2, updatedNumbers);
@@ -1052,6 +1052,8 @@ const handleRevealWinnerWithProof = async () => {
       // ✅ Store proof + public inputs for Complete Phase display
       setProofHex(result.proof);
       setPublicInputsHex(result.publicInputs);
+      setPlayer1GuessNumbers(result.player1);
+      setPlayer2GuessNumbers(result.player2);
 
       // 8️⃣ Refresh standings
       onStandingsRefresh();
@@ -1255,19 +1257,44 @@ await alphaDuelService.commitGuessToBackend(sessionId, playerNumber, playerGuess
   }
 };
 
+const BASE_URL =
+  window.location.hostname === "localhost"
+    ? "ws://localhost:3001"
+    : "wss://ws-alphaduel.vercel.app";
+
+// useEffect(() => {
+//   const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
+
+//  ws.onmessage = (event) => {
+//   const data = JSON.parse(event.data);
+//   if (data.player === 1 && data.guessNumbers) setPlayer1GuessNumbers(data.guessNumbers);
+//   if (data.player === 2 && data.guessNumbers) setPlayer2GuessNumbers(data.guessNumbers);
+// };
+
+
+//   return () => ws.close();
+// }, [sessionId]);
+
+
 useEffect(() => {
-  const ws = new WebSocket(`ws://localhost:3001?sessionId=${sessionId}`);
+  const ws = new WebSocket(`${BASE_URL}?sessionId=${sessionId}`);
 
- ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.player === 1 && data.guessNumbers) setPlayer1GuessNumbers(data.guessNumbers);
-  if (data.player === 2 && data.guessNumbers) setPlayer2GuessNumbers(data.guessNumbers);
-};
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
 
+      if (data.player === 1 && data.guessNumbers)
+        setPlayer1GuessNumbers(data.guessNumbers);
+
+      if (data.player === 2 && data.guessNumbers)
+        setPlayer2GuessNumbers(data.guessNumbers);
+    } catch (err) {
+      console.error("WebSocket parse error:", err);
+    }
+  };
 
   return () => ws.close();
 }, [sessionId]);
-
 
 
   return (
