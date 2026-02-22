@@ -1,4 +1,4 @@
-
+### ALPHA DUEL ZK POWERED MULTIPLAYER WORD GUESSING GAME 
 ## Table of Contents
 
 - [Stellar Game Studio](#stellar-game-studio)
@@ -40,13 +40,11 @@ It combines:
 -   Trustless multiplayer gameplay
 -   Stake-based competition (winner takes all)
 
-AlphaDuel replaces centralized referees with mathematics.
-
 ------------------------------------------------------------------------
 
 ## Video DEMO
 
-[![AlphaDuel ZK Multiplayer Word Game Explained](https://img.youtube.com/vi/tsdbotowpKA/0.jpg)](https://youtu.be/tsdbotowpKA)
+[![AlphaDuel ZK Multiplayer Word Game Explained](https://img.youtube.com/vi/noU5iQf25QY/0.jpg)](https://youtu.be/noU5iQf25QY)
 
 ------------------------------------------------------------------------
 
@@ -209,7 +207,7 @@ Private Inputs:
 
 Public Output:
 
--   winner flag (1 or 2)
+-   winner flag
 
 ------------------------------------------------------------------------
 
@@ -226,7 +224,7 @@ import circuit from './alphaduel_winner_proof.json';
 
 await Promise.all([initACVM(fetch(acvm)), initNoirC(fetch(noirc))]);
 
-const noir = new Noir(circuitTyped);
+const noir = new Noir(circuit);
 const backend = new UltraHonkBackend(circuit.bytecode);
 
 const { witness, returnValue } = await noir.execute({
@@ -322,7 +320,7 @@ bun run publish alpha-duel --build       # Export + build production frontend
 
 - AlphaDuel contract: [CC674UPBAU43Q7D4SL6GLLTMSAQOZBLPHYER5ZGDNMU3GA5P7ONNAVLK](https://stellar.expert/explorer/testnet/contract/CC674UPBAU43Q7D4SL6GLLTMSAQOZBLPHYER5ZGDNMU3GA5P7ONNAVLK?filter=history)
 - AlphaDuel contract called `start_game` and `end_game` on the Game Hub contract:
-  Testnet: CB4VZAT2U3UC6XFK3N23SKRF2NDCMP3QHJYMCHHFMZO7MRQO6DQ2EMYG
+  Testnet: [CB4VZAT2U3UC6XFK3N23SKRF2NDCMP3QHJYMCHHFMZO7MRQO6DQ2EMYG](https://stellar.expert/explorer/testnet/contract/CB4VZAT2U3UC6XFK3N23SKRF2NDCMP3QHJYMCHHFMZO7MRQO6DQ2EMYG?filter=interface)
 - Game Hub enforces exactly two players per session.
 - Keep randomness deterministic between simulation and submission.
 - Prefer temporary storage with a 30-day TTL for game state.
@@ -332,4 +330,4 @@ bun run publish alpha-duel --build       # Export + build production frontend
 
 [MIT License](https://github.com/ChielokaCode/AlphaDuel/blob/main/LICENSE) is added to Repo
 
-**Built with ❤️ for Stellar developers**
+**Built by Chieloka using Stellar Game Studio with ❤️ for Stellar developers**
